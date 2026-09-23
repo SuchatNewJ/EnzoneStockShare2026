@@ -106,6 +106,44 @@
   .modal input{width:100%;background:var(--card2);border:1px solid var(--line);
     color:var(--text);border-radius:10px;padding:12px;font-size:14px;}
   .modal .hint{font-size:11px;color:var(--sub);margin-top:6px;line-height:1.5;}
+
+  .notfound{text-align:center;padding:6px 2px 2px;}
+  .nf-icon{font-size:32px;margin-bottom:6px;}
+  .nf-title{color:var(--sub);font-size:13px;margin-bottom:4px;}
+  .nf-code{font-family:'Inter';font-weight:700;font-size:18px;margin-bottom:18px;word-break:break-all;}
+  .nf-actions{display:flex;flex-direction:column;gap:10px;}
+  .opt-btn{display:flex;align-items:center;gap:12px;background:var(--card2);
+    border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;
+    cursor:pointer;color:var(--text);width:100%;}
+  .opt-btn:active{transform:scale(.98);}
+  .opt-emoji{font-size:24px;flex-shrink:0;}
+  .opt-text{display:flex;flex-direction:column;gap:2px;}
+  .opt-title{font-family:'Mitr';font-weight:500;font-size:15px;}
+  .opt-sub{font-size:12px;color:var(--sub);}
+
+  .flow-header{margin-bottom:12px;}
+  .back-btn{background:none;border:none;color:var(--orange);font-size:13px;
+    padding:0;margin-bottom:8px;cursor:pointer;}
+  .flow-title{font-family:'Mitr';font-size:14px;line-height:1.5;}
+  .flow-title .mono{font-family:'Inter';color:var(--sub);font-size:12px;}
+
+  #linkSearchInput{width:100%;background:var(--card2);border:1px solid var(--line);
+    color:var(--text);border-radius:10px;padding:12px;font-size:16px;margin-bottom:10px;}
+  .link-results{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;}
+  .link-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
+  .li-name{font-size:14px;}
+  .li-code{font-size:11px;color:var(--sub);margin-top:2px;}
+  .li-select{background:var(--orange);color:#fff;border:none;border-radius:8px;
+    padding:8px 14px;font-size:13px;font-weight:600;flex-shrink:0;cursor:pointer;}
+  .empty.small{color:var(--sub);font-size:13px;text-align:center;padding:14px 0;}
+
+  .addform label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px;}
+  .addform input{width:100%;background:var(--card2);border:1px solid var(--line);
+    color:var(--text);border-radius:10px;padding:11px;font-size:15px;}
+  .form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .btn-save.full{width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;
+    background:var(--orange);color:#fff;font-family:'Mitr';font-weight:600;font-size:15px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -249,6 +287,8 @@ function manualSearch(){
 }
 
 // ---------- API ----------
+let lastScannedCode = '';
+
 async function lookupProduct(query){
   document.getElementById('resultCard').innerHTML = '<div class="empty">กำลังค้นหา...</div>';
   try{
@@ -256,8 +296,8 @@ async function lookupProduct(query){
     const res = await fetch(url);
     const data = await res.json();
     if(!data.ok){
-      document.getElementById('resultCard').innerHTML =
-        '<div class="empty">ไม่พบสินค้ารหัส "' + escapeHtml(query) + '"</div>';
+      lastScannedCode = query;
+      document.getElementById('resultCard').innerHTML = renderNotFoundHtml(query);
       toast('ไม่พบสินค้า', 'err');
       return;
     }
@@ -268,6 +308,166 @@ async function lookupProduct(query){
     document.getElementById('resultCard').innerHTML = '<div class="empty">เชื่อมต่อไม่สำเร็จ ตรวจสอบ URL ในตั้งค่า</div>';
     toast('เชื่อมต่อไม่สำเร็จ', 'err');
   }
+}
+
+// ---------- Not found → link existing / add new ----------
+function renderNotFoundHtml(code){
+  return `
+    <div class="notfound">
+      <div class="nf-icon">❓</div>
+      <div class="nf-title">ไม่พบสินค้ารหัสนี้ในระบบ</div>
+      <div class="nf-code">${escapeHtml(code)}</div>
+      <div class="nf-actions">
+        <button class="opt-btn" onclick="renderLinkFlow()">
+          <span class="opt-emoji">🔗</span>
+          <span class="opt-text">
+            <span class="opt-title">ผูกกับสินค้าเดิม</span>
+            <span class="opt-sub">สินค้าที่มีอยู่แล้ว แต่ยังไม่มีบาร์โค้ด</span>
+          </span>
+        </button>
+        <button class="opt-btn" onclick="renderAddForm()">
+          <span class="opt-emoji">➕</span>
+          <span class="opt-text">
+            <span class="opt-title">เพิ่มสินค้าใหม่</span>
+            <span class="opt-sub">สินค้าที่ยังไม่เคยมีในระบบเลย</span>
+          </span>
+        </button>
+      </div>
+    </div>`;
+}
+
+function backToNotFound(){
+  document.getElementById('resultCard').innerHTML = renderNotFoundHtml(lastScannedCode);
+}
+
+function renderLinkFlow(){
+  document.getElementById('resultCard').innerHTML = `
+    <div class="linkflow">
+      <div class="flow-header">
+        <button class="back-btn" onclick="backToNotFound()">‹ ย้อนกลับ</button>
+        <div class="flow-title">ผูกบาร์โค้ด <b>${escapeHtml(lastScannedCode)}</b><br>กับสินค้าเดิม</div>
+      </div>
+      <input type="text" id="linkSearchInput" placeholder="พิมพ์ชื่อหรือรหัสสินค้า...">
+      <div id="linkResults" class="link-results"><div class="empty small">พิมพ์เพื่อค้นหาสินค้า</div></div>
+    </div>`;
+  const inp = document.getElementById('linkSearchInput');
+  inp.addEventListener('input', debouncedLinkSearch);
+  inp.focus();
+}
+
+let linkSearchTimer = null;
+function debouncedLinkSearch(){
+  clearTimeout(linkSearchTimer);
+  linkSearchTimer = setTimeout(runLinkSearch, 350);
+}
+
+async function runLinkSearch(){
+  const box = document.getElementById('linkResults');
+  const inp = document.getElementById('linkSearchInput');
+  if(!inp) return;
+  const q = inp.value.trim();
+  if(!q){ box.innerHTML = '<div class="empty small">พิมพ์เพื่อค้นหาสินค้า</div>'; return; }
+  box.innerHTML = '<div class="empty small">กำลังค้นหา...</div>';
+  try{
+    const url = getApiUrl() + '?action=find&q=' + encodeURIComponent(q);
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!data.ok || !data.items || data.items.length === 0){
+      box.innerHTML = '<div class="empty small">ไม่พบสินค้าที่ตรงกัน</div>';
+      return;
+    }
+    box.innerHTML = data.items.map(it => `
+      <div class="link-item">
+        <div class="li-info">
+          <div class="li-name">${escapeHtml(it.name||'-')}</div>
+          <div class="li-code">${escapeHtml(it.default_code||'-')} ${it.barcode ? '· มีบาร์โค้ดแล้ว: '+escapeHtml(it.barcode) : '· ยังไม่มีบาร์โค้ด'}</div>
+        </div>
+        <button class="li-select" data-code="${escapeAttr(it.default_code)}">เลือก</button>
+      </div>`).join('');
+    Array.from(box.querySelectorAll('.li-select')).forEach(btn => {
+      btn.onclick = () => linkToProduct(btn.getAttribute('data-code'));
+    });
+  }catch(err){
+    box.innerHTML = '<div class="empty small">เชื่อมต่อไม่สำเร็จ</div>';
+  }
+}
+
+async function linkToProduct(targetCode){
+  try{
+    const data = await postAction({ action: 'link_barcode', barcode: lastScannedCode, target_code: targetCode });
+    if(data.ok){
+      toast('ผูกบาร์โค้ดสำเร็จ', 'ok');
+      currentProduct = data.product;
+      renderProduct(currentProduct);
+      pushHistory(currentProduct);
+    } else if(data.error === 'duplicate_barcode'){
+      toast('บาร์โค้ดนี้ถูกใช้กับ "' + (data.existing && data.existing.name || '') + '" อยู่แล้ว', 'err');
+    } else {
+      toast('ผูกไม่สำเร็จ: ' + (data.error||''), 'err');
+    }
+  }catch(err){ toast('เชื่อมต่อไม่สำเร็จ', 'err'); }
+}
+
+function renderAddForm(){
+  document.getElementById('resultCard').innerHTML = `
+    <div class="addform">
+      <div class="flow-header">
+        <button class="back-btn" onclick="backToNotFound()">‹ ย้อนกลับ</button>
+        <div class="flow-title">เพิ่มสินค้าใหม่<br><span class="mono">บาร์โค้ด: ${escapeHtml(lastScannedCode)}</span></div>
+      </div>
+      <label>ชื่อสินค้า *</label>
+      <input type="text" id="np_name" placeholder="เช่น เบรกเกอร์ 3P 100A">
+      <div class="form-row2">
+        <div><label>แบรนด์</label><input type="text" id="np_brand" placeholder="เช่น Schneider"></div>
+        <div><label>หมวดหมู่</label><input type="text" id="np_categ" placeholder="เช่น เบรกเกอร์"></div>
+      </div>
+      <div class="form-row2">
+        <div><label>จำนวน</label><input type="number" id="np_qty" value="0"></div>
+        <div><label>หน่วย</label><input type="text" id="np_uom" placeholder="เช่น ตัว, ชุด"></div>
+      </div>
+      <div class="form-row2">
+        <div><label>ราคา (บาท)</label><input type="number" id="np_price" value="0"></div>
+        <div><label>ที่เก็บ</label><input type="text" id="np_location" placeholder="เช่น ชั้น A2"></div>
+      </div>
+      <label>รหัสสินค้า (ProductID)</label>
+      <input type="text" id="np_code" placeholder="เว้นว่างให้ระบบออกรหัสให้อัตโนมัติ">
+      <button class="btn-save full" onclick="submitNewProduct()">บันทึกสินค้าใหม่</button>
+    </div>`;
+  document.getElementById('np_name').focus();
+}
+
+async function submitNewProduct(){
+  const name = document.getElementById('np_name').value.trim();
+  if(!name){ toast('กรุณากรอกชื่อสินค้า', 'err'); return; }
+  const payload = {
+    action: 'add_product',
+    barcode: lastScannedCode,
+    product: {
+      name: name,
+      brand: document.getElementById('np_brand').value.trim(),
+      categ_id: document.getElementById('np_categ').value.trim(),
+      qty_available: Number(document.getElementById('np_qty').value) || 0,
+      uom_id: document.getElementById('np_uom').value.trim(),
+      list_price: Number(document.getElementById('np_price').value) || 0,
+      location: document.getElementById('np_location').value.trim(),
+      default_code: document.getElementById('np_code').value.trim()
+    }
+  };
+  try{
+    const data = await postAction(payload);
+    if(data.ok){
+      toast('เพิ่มสินค้าใหม่สำเร็จ', 'ok');
+      currentProduct = data.product;
+      renderProduct(currentProduct);
+      pushHistory(currentProduct);
+    } else if(data.error === 'duplicate_barcode' || data.error === 'duplicate_code'){
+      toast('รหัสนี้ถูกใช้กับ "' + (data.existing && data.existing.name || '') + '" อยู่แล้ว', 'err');
+    } else if(data.error === 'missing_name'){
+      toast('กรุณากรอกชื่อสินค้า', 'err');
+    } else {
+      toast('บันทึกไม่สำเร็จ: ' + (data.error||''), 'err');
+    }
+  }catch(err){ toast('เชื่อมต่อไม่สำเร็จ', 'err'); }
 }
 
 async function postAction(payload){
@@ -355,6 +555,9 @@ function renderProduct(p){
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){
+  return String(s==null?'':s).replace(/"/g,'&quot;');
 }
 
 // ---------- History ----------
