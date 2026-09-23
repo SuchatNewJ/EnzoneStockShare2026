@@ -48,6 +48,12 @@
     color:var(--orange);border-radius:10px;padding:0 16px;font-weight:600;}
   #reader{width:100%;border-radius:14px;overflow:hidden;margin-top:12px;
     border:1px solid var(--line);display:none;}
+  #reader.flash-success{animation:flashGreen .5s ease;}
+  @keyframes flashGreen{
+    0%{box-shadow:0 0 0 4px rgba(34,197,94,0);}
+    30%{box-shadow:0 0 0 6px rgba(34,197,94,1);}
+    100%{box-shadow:0 0 0 4px rgba(34,197,94,0);}
+  }
   .reader-close{width:100%;margin-top:8px;padding:10px;background:var(--card2);
     border:1px solid var(--line);color:var(--sub);border-radius:10px;display:none;}
   .empty{text-align:center;color:var(--sub);padding:30px 10px;font-size:14px;}
@@ -118,7 +124,7 @@
 <main>
   <div class="card">
     <button class="scan-btn" id="scanBtn" onclick="toggleScanner()">
-      <span>📷</span><span>สแกนบาร์โค้ด / QR</span>
+      <span>▶</span><span>เริ่มสแกน</span>
     </button>
     <div id="reader"></div>
     <button class="reader-close" id="closeReaderBtn" onclick="stopScanner()">ปิดกล้อง</button>
@@ -217,14 +223,23 @@ function stopScanner(){
 }
 function resetScanUI(){
   scanning = false;
+  scanLocked = false;
   document.getElementById('reader').style.display = 'none';
   document.getElementById('closeReaderBtn').style.display = 'none';
-  document.getElementById('scanBtn').innerHTML = '<span>📷</span><span>สแกนบาร์โค้ด / QR</span>';
+  document.getElementById('scanBtn').innerHTML = '<span>▶</span><span>เริ่มสแกน</span>';
 }
+let scanLocked = false;
 function onScanSuccess(code){
+  if(scanLocked) return; // กันไม่ให้ยิงซ้ำระหว่างที่กำลังกระพริบ/หยุดกล้อง
+  scanLocked = true;
   if(navigator.vibrate) navigator.vibrate(80);
-  stopScanner();
-  lookupProduct(code);
+  const readerEl = document.getElementById('reader');
+  readerEl.classList.add('flash-success');
+  setTimeout(() => {
+    readerEl.classList.remove('flash-success');
+    stopScanner();
+    lookupProduct(code);
+  }, 500);
 }
 function manualSearch(){
   const v = document.getElementById('manualInput').value.trim();
